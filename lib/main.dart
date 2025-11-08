@@ -39,7 +39,6 @@ class _IotAppState extends State<IotApp> {
       ),
       home: Scaffold(
         appBar: AppBar(
-          title: const Text("IoT 스마트 환경"),
           actions: [
             IconButton(
               icon: const Icon(Icons.menu),
@@ -64,8 +63,8 @@ class _IotAppState extends State<IotApp> {
               label: '리포트',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.settings_outlined),
-              label: '환경설정',
+              icon: Icon(Icons.calendar_month_outlined),
+              label: '공부 시간',
             ),
           ],
         ),

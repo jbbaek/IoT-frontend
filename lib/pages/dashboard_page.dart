@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:fl_chart/fl_chart.dart';
 import 'dart:math';
 
 class DashboardPage extends StatefulWidget {
@@ -17,19 +16,22 @@ class _DashboardPageState extends State<DashboardPage> {
   double brightness = 310;
   double noise = 38.7;
 
-  List<FlSpot> tempData = [];
-  List<FlSpot> humData = [];
+  // ✅ LED 관련 상태
+  bool ledOn = true;
+  double ledBrightness = 0.7;
+  Color selectedColor = Colors.amber;
 
-  @override
-  void initState() {
-    super.initState();
-    tempData = _generateRandomData();
-    humData = _generateRandomData();
-  }
-
-  List<FlSpot> _generateRandomData() {
-    return List.generate(10, (i) => FlSpot(i.toDouble(), Random().nextDouble() * 100));
-  }
+  final List<Color> ledColors = [
+    Colors.red,
+    Colors.orange,
+    Colors.amber,
+    Colors.green,
+    Colors.teal,
+    Colors.blue,
+    Colors.purple,
+    Colors.pink,
+    Colors.white,
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -59,51 +61,7 @@ class _DashboardPageState extends State<DashboardPage> {
           const SizedBox(height: 30),
           const Text("LED 현재 상태", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
           const SizedBox(height: 10),
-          Card(
-            color: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  const Icon(Icons.lightbulb, color: Colors.amber, size: 40),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      ledState,
-                      style: const TextStyle(fontSize: 16),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 30),
-          const Text("실시간 변화", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 10),
-          SizedBox(
-            height: 200,
-            child: LineChart(LineChartData(
-              gridData: const FlGridData(show: false),
-              titlesData: const FlTitlesData(show: false),
-              borderData: FlBorderData(show: false),
-              lineBarsData: [
-                LineChartBarData(
-                  spots: tempData,
-                  isCurved: true,
-                  color: Colors.orange,
-                  barWidth: 3,
-                ),
-                LineChartBarData(
-                  spots: humData,
-                  isCurved: true,
-                  color: Colors.blueAccent,
-                  barWidth: 3,
-                ),
-              ],
-            )),
-          ),
+          _buildLedControlCard(),
         ],
       ),
     );
@@ -111,7 +69,8 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildSensorCard(IconData icon, String title, String value) {
     return Container(
-      width: 160,
+      width: 180,
+      height: 130,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(15),
@@ -160,6 +119,108 @@ class _DashboardPageState extends State<DashboardPage> {
             Icon(icon, color: color, size: 40),
             const SizedBox(width: 12),
             Text(userState, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ✅ LED 제어 카드
+  Widget _buildLedControlCard() {
+    return Card(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // LED 상태
+            Row(
+              children: [
+                Icon(Icons.lightbulb, color: selectedColor, size: 36),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    ledState,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 20),
+            const Text("LED 색상 선택", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+
+            // 색상 팔레트
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: ledColors.map((color) {
+                bool isSelected = selectedColor == color;
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      selectedColor = color;
+                    });
+                  },
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                      border: isSelected
+                          ? Border.all(color: Colors.blueAccent, width: 3)
+                          : Border.all(color: Colors.grey.shade300, width: 1),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+
+            const SizedBox(height: 25),
+            const Text("밝기 조절", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+
+            // 밝기 스위치 + 슬라이더
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Text("LED 전원", style: TextStyle(fontSize: 15)),
+                    Switch(
+                      value: ledOn,
+                      activeColor: Colors.teal,
+                      onChanged: (value) {
+                        setState(() {
+                          ledOn = value;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+                Text("${(ledBrightness * 100).toInt()}%", style: const TextStyle(fontSize: 15)),
+              ],
+            ),
+
+            Slider(
+              value: ledBrightness,
+              min: 0,
+              max: 1,
+              divisions: 10,
+              activeColor: Colors.teal,
+              inactiveColor: Colors.grey.shade300,
+              onChanged: ledOn
+                  ? (value) {
+                setState(() {
+                  ledBrightness = value;
+                });
+              }
+                  : null,
+            ),
           ],
         ),
       ),

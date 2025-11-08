@@ -7,6 +7,7 @@ class ReportPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(), // ✅ 스크롤 부드럽게
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -15,15 +16,15 @@ class ReportPage extends StatelessWidget {
           const SizedBox(height: 20),
 
           _sectionTitle("일간 학습 패턴"),
-          _dailyChart(),
+          IgnorePointer(child: _dailyChart()), // ✅ 차트 스크롤 방해 방지
 
           const SizedBox(height: 30),
           _sectionTitle("주간 학습 패턴"),
-          _weeklyChart(),
+          IgnorePointer(child: _weeklyChart()),
 
           const SizedBox(height: 30),
           _sectionTitle("방해 요인 통계"),
-          _disturbanceChart(),
+          IgnorePointer(child: _disturbanceChart()),
 
           const SizedBox(height: 30),
           _sectionTitle("AI 인사이트"),
