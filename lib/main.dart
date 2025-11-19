@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'pages/dashboard_page.dart';
 import 'pages/report_page.dart';
+import 'pages/routine_page.dart';
+import 'pages/routine_create_page.dart'; // ✅ 추가
 
 void main() {
   runApp(const IotApp());
@@ -16,9 +18,11 @@ class IotApp extends StatefulWidget {
 class _IotAppState extends State<IotApp> {
   int _selectedIndex = 0;
 
-  final List<Widget> _pages = [
-    const DashboardPage(),
-    const ReportPage(),
+  // 하단바 탭 3개에 대응하는 페이지
+  final List<Widget> _pages = const [
+    DashboardPage(),
+    ReportPage(),
+    RoutinePage(),
   ];
 
   void _onItemTapped(int index) {
@@ -27,29 +31,28 @@ class _IotAppState extends State<IotApp> {
 
   @override
   Widget build(BuildContext context) {
+    const accent = Color(0xFFDDF1FF);
+
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        scaffoldBackgroundColor: const Color(0xFFDDF1FF),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFFDDF1FF),
-          foregroundColor: Colors.black87,
-          elevation: 0,
+        scaffoldBackgroundColor: accent,
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: accent,
+          brightness: Brightness.light,
         ),
       ),
+      // ✅ /routine_create 라우트 등록
+      routes: {
+        '/routine_create': (context) => const RoutineCreatePage(),
+      },
       home: Scaffold(
-        appBar: AppBar(
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.menu),
-              onPressed: () {},
-            ),
-          ],
-        ),
+        // ⛔ 상단바 없음
         body: _pages[_selectedIndex],
         bottomNavigationBar: BottomNavigationBar(
           backgroundColor: Colors.white,
-          selectedItemColor: Colors.teal,
+          selectedItemColor: accent,
           unselectedItemColor: Colors.grey,
           currentIndex: _selectedIndex,
           onTap: _onItemTapped,
