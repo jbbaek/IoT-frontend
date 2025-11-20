@@ -224,44 +224,63 @@ class _RoutinePageState extends State<RoutinePage> {
 
             const SizedBox(height: 10),
 
-            // 볼륨 조절
-            Column(
-              children: [
-                const Text("루틴 볼륨 조절", style: TextStyle(fontSize: 14)),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.remove),
-                      onPressed: () {
-                        setState(() {
-                          if (volume > 0) volume--;
-                        });
-                      },
-                    ),
-                    const Icon(Icons.volume_up, color: Colors.blueAccent),
-                    Slider(
-                      value: volume,
-                      min: 0,
-                      max: 10,
-                      divisions: 10,
-                      activeColor: Colors.blueAccent,
-                      onChanged: (value) {
-                        setState(() => volume = value);
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.add),
-                      onPressed: () {
-                        setState(() {
-                          if (volume < 10) volume++;
-                        });
-                      },
-                    ),
-                  ],
-                ),
-              ],
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.black12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 5,
+                    offset: const Offset(0, 3),
+                  )
+                ],
+              ),
+              child: Column(
+                children: [
+                  const Text(
+                    "루틴 볼륨 조절",
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.remove),
+                        onPressed: () {
+                          setState(() {
+                            if (volume > 0) volume--;
+                          });
+                        },
+                      ),
+                      const Icon(Icons.volume_up, color: Colors.blueAccent),
+                      Expanded(
+                        child: Slider(
+                          value: volume,
+                          min: 0,
+                          max: 10,
+                          divisions: 10,
+                          activeColor: Colors.blueAccent,
+                          onChanged: (value) {
+                            setState(() => volume = value);
+                          },
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.add),
+                        onPressed: () {
+                          setState(() {
+                            if (volume < 10) volume++;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ],
         ),
