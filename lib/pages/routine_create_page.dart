@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-// TODO : FastAPI 서버 주소로 변경
-const String baseUrl = "http://<BACKEND_IP>:8000";
+// FastAPI 서버 주소
+const String baseUrl = "https://hyperexcitable-sclerosal-marleen.ngrok-free.dev";
 
 class RoutineCreatePage extends StatefulWidget {
   final Map<String, dynamic>? existingRoutine;
@@ -25,9 +25,19 @@ class _RoutineCreatePageState extends State<RoutineCreatePage> {
 
   bool repeatEveryday = false;
   List<String> selectedDays = [];
-  final List<String> days = ["월", "화", "수", "목", "금", "토", "일"];
 
-  int? routineId; // ← 수정 시 ID 저장
+  // code = 서버에 보내는 값, label = 화면에 보이는 글자
+  final List<Map<String, String>> dayOptions = [
+    {"code": "MON", "label": "월"},
+    {"code": "TUE", "label": "화"},
+    {"code": "WED", "label": "수"},
+    {"code": "THU", "label": "목"},
+    {"code": "FRI", "label": "금"},
+    {"code": "SAT", "label": "토"},
+    {"code": "SUN", "label": "일"},
+  ];
+
+  int? routineId; // 수정 시 ID 저장
 
   @override
   void initState() {
@@ -37,13 +47,16 @@ class _RoutineCreatePageState extends State<RoutineCreatePage> {
       final r = widget.existingRoutine!;
       routineId = r["id"];
 
-      titleController.text = r["name"] ?? "";
-      focusController.text = r["focus"] ?? "";
-      restController.text = r["rest"] ?? "";
+      titleController.text = (r["title"] ?? "").toString();
+      focusController.text = (r["focus"] ?? "").toString();
+      restController.text = (r["rest"] ?? "").toString();
 
       repeatEveryday = r["repeatEveryday"] ?? false;
       selectedDays = List<String>.from(r["selectedDays"] ?? []);
-      routineItems = List<Map<String, dynamic>>.from(r["items"] ?? []);
+
+      // items: [{name, duration, ...}]
+      routineItems =
+      List<Map<String, dynamic>>.from(r["items"] ?? <Map<String, dynamic>>[]);
 
       if (r["startTime"] != null) {
         startTime = TimeOfDay(
@@ -60,18 +73,20 @@ class _RoutineCreatePageState extends State<RoutineCreatePage> {
     }
   }
 
+  /// 화면에서 집중/휴식 루틴 자동 생성
   void generateRoutine() {
     if (startTime == null || endTime == null) return;
     if (focusController.text.isEmpty || restController.text.isEmpty) return;
 
     final int focusMin = int.tryParse(focusController.text) ?? 0;
     final int restMin = int.tryParse(restController.text) ?? 0;
+    if (focusMin <= 0 || restMin <= 0) return;
 
     routineItems.clear();
 
     DateTime now = DateTime.now();
-    DateTime start = DateTime(
-        now.year, now.month, now.day, startTime!.hour, startTime!.minute);
+    DateTime start =
+    DateTime(now.year, now.month, now.day, startTime!.hour, startTime!.minute);
     DateTime end =
     DateTime(now.year, now.month, now.day, endTime!.hour, endTime!.minute);
 
@@ -80,20 +95,28 @@ class _RoutineCreatePageState extends State<RoutineCreatePage> {
       DateTime focusEnd = start.add(Duration(minutes: focusMin));
       if (focusEnd.isAfter(end)) break;
 
+      final startStr =
+          "${start.hour.toString().padLeft(2, '0')}:${start.minute.toString().padLeft(2, '0')}";
+
+      // 공부 N 회차
       routineItems.add({
-        "title": "공부 $cycle",
-        "time":
-        "${start.hour.toString().padLeft(2, '0')}:${start.minute.toString().padLeft(2, '0')}"
+        "name": "공부 $cycle",
+        "duration": focusMin,
+        "time": startStr, // 프론트 표시용
       });
 
       start = focusEnd;
       DateTime restEnd = start.add(Duration(minutes: restMin));
       if (restEnd.isAfter(end)) break;
 
+      final restStr =
+          "${start.hour.toString().padLeft(2, '0')}:${start.minute.toString().padLeft(2, '0')}";
+
+      // 휴식 N 회차
       routineItems.add({
-        "title": "휴식 $cycle",
-        "time":
-        "${start.hour.toString().padLeft(2, '0')}:${start.minute.toString().padLeft(2, '0')}"
+        "name": "휴식 $cycle",
+        "duration": restMin,
+        "time": restStr,
       });
 
       start = restEnd;
@@ -103,29 +126,43 @@ class _RoutineCreatePageState extends State<RoutineCreatePage> {
     setState(() {});
   }
 
+  /// POST /routines
   Future<void> createRoutine(Map<String, dynamic> body) async {
     final url = Uri.parse("$baseUrl/routines");
-    await http.post(
+    final res = await http.post(
       url,
       headers: {"Content-Type": "application/json"},
       body: json.encode(body),
     );
+
+    if (res.statusCode != 200 && res.statusCode != 201) {
+      debugPrint("POST 실패: ${res.statusCode} / ${res.body}");
+    }
   }
 
-  Future<void> updateRoutine(int id, Map<String, dynamic> body) async {
+  /// PUT /routines/{id}
+  Future<void> updateRoutineApi(int id, Map<String, dynamic> body) async {
     final url = Uri.parse("$baseUrl/routines/$id");
-    await http.put(
+    final res = await http.put(
       url,
       headers: {"Content-Type": "application/json"},
       body: json.encode(body),
     );
+
+    if (res.statusCode != 200) {
+      debugPrint("PUT 실패: ${res.statusCode} / ${res.body}");
+    }
   }
 
+  /// 저장 버튼 눌렀을 때
   Future<void> saveRoutine() async {
+    final int focusMin = int.tryParse(focusController.text) ?? 0;
+    final int restMin = int.tryParse(restController.text) ?? 0;
+
     final routineBody = {
-      "name": titleController.text,
-      "focus": focusController.text,
-      "rest": restController.text,
+      "title": titleController.text,
+      "focus": focusMin,
+      "rest": restMin,
       "startTime": startTime != null
           ? {"hour": startTime!.hour, "minute": startTime!.minute}
           : null,
@@ -133,18 +170,29 @@ class _RoutineCreatePageState extends State<RoutineCreatePage> {
           ? {"hour": endTime!.hour, "minute": endTime!.minute}
           : null,
       "repeatEveryday": repeatEveryday,
+      // selectedDays에는 "MON","TUE" 같은 code 값이 들어감
       "selectedDays": selectedDays,
-      "items": routineItems,
+      "items": routineItems
+          .map((it) => {
+        "name": it["name"],
+        "duration": it["duration"],
+        "time": it["time"], // extra 필드 (백엔드에서 allow)
+      })
+          .toList(),
       "active": false,
     };
 
-    if (routineId == null) {
-      await createRoutine(routineBody);
-    } else {
-      await updateRoutine(routineId!, routineBody);
-    }
+    try {
+      if (routineId == null) {
+        await createRoutine(routineBody);
+      } else {
+        await updateRoutineApi(routineId!, routineBody);
+      }
 
-    if (mounted) Navigator.pop(context, true); // ✅ true 반환
+      if (mounted) Navigator.pop(context, true); // true → 목록에서 reload
+    } catch (e) {
+      debugPrint("saveRoutine 오류: $e");
+    }
   }
 
   @override
@@ -180,8 +228,8 @@ class _RoutineCreatePageState extends State<RoutineCreatePage> {
                 fillColor: Colors.white,
                 border:
                 OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 14),
+                contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               ),
             ),
 
@@ -271,9 +319,11 @@ class _RoutineCreatePageState extends State<RoutineCreatePage> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text("📋 생성된 스케줄",
-                      style:
-                      TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  const Text(
+                    "📋 생성된 스케줄",
+                    style:
+                    TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
                   const SizedBox(height: 12),
                   Container(
                     decoration: BoxDecoration(
@@ -293,19 +343,22 @@ class _RoutineCreatePageState extends State<RoutineCreatePage> {
                           dense: true,
                           leading: CircleAvatar(
                             backgroundColor:
-                            Colors.blueAccent.withValues(alpha: 0.15),
+                            Colors.blueAccent.withOpacity(0.15),
                             radius: 16,
                             child: Icon(
-                              item["title"].contains("공부")
+                              (item["name"] ?? "").toString().contains("공부")
                                   ? Icons.school
                                   : Icons.coffee,
                               size: 18,
                               color: Colors.blueAccent,
                             ),
                           ),
-                          title: Text(item["title"]),
+                          title: Text(item["name"] ?? ""),
+                          subtitle: item["duration"] != null
+                              ? Text("${item["duration"]}분")
+                              : null,
                           trailing: Text(
-                            item["time"],
+                            item["time"] ?? "",
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               color: Colors.blueAccent,
@@ -329,8 +382,11 @@ class _RoutineCreatePageState extends State<RoutineCreatePage> {
                   onChanged: (val) {
                     setState(() {
                       repeatEveryday = val ?? false;
-                      selectedDays =
-                      repeatEveryday ? List<String>.from(days) : [];
+                      selectedDays = repeatEveryday
+                          ? dayOptions
+                          .map((d) => d["code"]!)
+                          .toList()
+                          : [];
                     });
                   },
                 ),
@@ -338,27 +394,30 @@ class _RoutineCreatePageState extends State<RoutineCreatePage> {
               ],
             ),
 
+            // 요일 선택 (한글 표시)
             Wrap(
               spacing: 6,
-              children: days.map((day) {
-                final selected = selectedDays.contains(day);
+              children: dayOptions.map((day) {
+                final code = day["code"]!;   // 예: "MON"
+                final label = day["label"]!; // 예: "월"
+                final selected = selectedDays.contains(code);
+
                 return ChoiceChip(
-                  label: Text(day),
+                  label: Text(label),
                   selected: selected,
-                  selectedColor: Colors.blue.withValues(alpha: 0.3),
+                  selectedColor: Colors.blue.withOpacity(0.3),
                   onSelected: (val) {
                     setState(() {
                       if (val) {
-                        selectedDays.add(day);
-                        if (selectedDays.length == 7) {
-                          repeatEveryday = true;
+                        if (!selectedDays.contains(code)) {
+                          selectedDays.add(code);
                         }
                       } else {
-                        selectedDays.remove(day);
-                        if (!selectedDays.contains(day)) {
-                          repeatEveryday = false;
-                        }
+                        selectedDays.remove(code);
                       }
+                      // 7개 다 선택되면 매일 = true
+                      repeatEveryday =
+                      (selectedDays.length == dayOptions.length);
                     });
                   },
                 );

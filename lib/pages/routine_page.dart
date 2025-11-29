@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-// TODO: 백엔드에서 받은 IP로 변경해야 함!!
-const String baseUrl = "http://<BACKEND_IP>:8000";
+// FastAPI 서버 주소
+const String baseUrl = "https://hyperexcitable-sclerosal-marleen.ngrok-free.dev";
 
 class RoutinePage extends StatefulWidget {
   const RoutinePage({super.key});
@@ -23,42 +23,74 @@ class _RoutinePageState extends State<RoutinePage> {
     loadRoutines();
   }
 
+  /// GET /routines  : 전체 루틴 목록 불러오기
   Future<void> loadRoutines() async {
     try {
       final url = Uri.parse("$baseUrl/routines");
       final res = await http.get(url);
 
       if (res.statusCode == 200) {
+        final List<dynamic> raw = json.decode(res.body);
+
         setState(() {
-          routines = List<Map<String, dynamic>>.from(json.decode(res.body));
+          routines = raw.map<Map<String, dynamic>>((e) {
+            final map = Map<String, dynamic>.from(e);
+
+            return {
+              "id": map["id"],
+              "title": map["title"] ?? "",
+              "focus": map["focus"] ?? 0,
+              "rest": map["rest"] ?? 0,
+              "startTime": map["startTime"],
+              "endTime": map["endTime"],
+              "repeatEveryday": map["repeatEveryday"] ?? false,
+              "selectedDays":
+              (map["selectedDays"] as List?)
+                  ?.map((d) => d.toString())
+                  .toList() ??
+                  <String>[],
+              "items": (map["items"] as List? ?? [])
+                  .map((it) => Map<String, dynamic>.from(it))
+                  .toList(),
+              "active": map["active"] ?? false,
+            };
+          }).toList();
         });
       } else {
-        debugPrint("GET 실패: ${res.statusCode}");
+        debugPrint("GET 실패: ${res.statusCode} / ${res.body}");
       }
     } catch (e) {
       debugPrint("GET 오류: $e");
     }
   }
 
+  /// PUT /routines/{id}
+  /// active 토글 등 루틴 일부 변경 시 사용
   Future<void> updateRoutine(int id, Map<String, dynamic> updatedData) async {
     try {
       final url = Uri.parse("$baseUrl/routines/$id");
+
+      // id 필드는 body에서 제거 (백엔드 스키마에 보통 없음)
+      final bodyMap = Map<String, dynamic>.from(updatedData)..remove("id");
+
       final res = await http.put(
         url,
         headers: {"Content-Type": "application/json"},
-        body: json.encode(updatedData),
+        body: json.encode(bodyMap),
       );
 
       if (res.statusCode == 200) {
-        loadRoutines();
+        await loadRoutines();
       } else {
-        debugPrint("PUT 실패: ${res.statusCode}");
+        debugPrint("PUT 실패: ${res.statusCode} / ${res.body}");
       }
     } catch (e) {
       debugPrint("PUT 오류: $e");
     }
   }
 
+  /// DELETE /routines/{id}
+  /// 스펙: 204 No Content
   Future<void> deleteRoutine(int index) async {
     final id = routines[index]["id"];
 
@@ -66,10 +98,10 @@ class _RoutinePageState extends State<RoutinePage> {
       final url = Uri.parse("$baseUrl/routines/$id");
       final res = await http.delete(url);
 
-      if (res.statusCode == 200) {
+      if (res.statusCode == 204) {
         setState(() => routines.removeAt(index));
       } else {
-        debugPrint("DELETE 실패: ${res.statusCode}");
+        debugPrint("DELETE 실패: ${res.statusCode} / ${res.body}");
       }
     } catch (e) {
       debugPrint("DELETE 오류: $e");
@@ -78,21 +110,14 @@ class _RoutinePageState extends State<RoutinePage> {
 
   @override
   Widget build(BuildContext context) {
-    // ❗ 여기서는 Scaffold 쓰지 않고, 메인 Scaffold의 body 안에 들어가는 위젯만 만든다.
+    // 상위(main.dart)에서 Scaffold를 쓰고 있으니 여기서는 내용만
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 상단 제목
-            const Text(
-              "루틴 관리",
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-
-            // 루틴 만들기 카드
+            // 상단 설명 + 루틴 만들기
             Container(
               padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
               decoration: BoxDecoration(
@@ -117,7 +142,7 @@ class _RoutinePageState extends State<RoutinePage> {
                   const SizedBox(height: 10),
                   ElevatedButton(
                     onPressed: () async {
-                      // 👉 새 루틴 생성 화면으로 이동
+                      // 새 루틴 생성 화면으로 이동
                       final result =
                       await Navigator.pushNamed(context, '/routine_create');
 
@@ -176,7 +201,7 @@ class _RoutinePageState extends State<RoutinePage> {
                   final routine = routines[index];
 
                   return ListTile(
-                    title: Text(routine["name"] ?? "이름 없음"),
+                    title: Text(routine["title"] ?? "제목 없음"),
                     subtitle: Text(
                       "집중 ${routine["focus"]}분 / 휴식 ${routine["rest"]}분",
                     ),
@@ -212,7 +237,10 @@ class _RoutinePageState extends State<RoutinePage> {
                         : Switch(
                       value: routine["active"] ?? false,
                       onChanged: (val) async {
-                        final updated = {...routine, "active": val};
+                        final updated = {
+                          ...routine,
+                          "active": val,
+                        };
                         await updateRoutine(routine["id"], updated);
                       },
                       activeColor: Colors.blueAccent,
@@ -224,6 +252,7 @@ class _RoutinePageState extends State<RoutinePage> {
 
             const SizedBox(height: 10),
 
+            // 볼륨 설정 카드 (백엔드 연동 X, 로컬 UI 기능)
             Container(
               padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
               decoration: BoxDecoration(

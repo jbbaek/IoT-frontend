@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'pages/dashboard_page.dart';
 import 'pages/report_page.dart';
 import 'pages/routine_page.dart';
-import 'pages/routine_create_page.dart'; // ✅ 추가
+import 'pages/routine_create_page.dart';
 
 void main() {
   runApp(const IotApp());
@@ -43,12 +43,17 @@ class _IotAppState extends State<IotApp> {
           brightness: Brightness.light,
         ),
       ),
-      // ✅ /routine_create 라우트 등록
+      // ✅ /routine_create 라우트 등록 (수정/생성 공통 사용)
       routes: {
-        '/routine_create': (context) => const RoutineCreatePage(),
+        '/routine_create': (context) {
+          // arguments로 기존 루틴(Map<String, dynamic>)이 넘어올 수도, null일 수도 있음
+          final args =
+          ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+          return RoutineCreatePage(existingRoutine: args);
+        },
       },
       home: Scaffold(
-        // ⛔ 상단바 없음
+        // 상단 AppBar 없이, 각 페이지가 자체적으로 구성
         body: _pages[_selectedIndex],
         bottomNavigationBar: BottomNavigationBar(
           backgroundColor: Colors.white,
