@@ -181,8 +181,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildSensorCard(IconData icon, String title, String value) {
     return Container(
-      width: 180,
-      height: 130,
+      width: 180,               // 가로만 고정
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(15),
@@ -196,18 +195,24 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, color: Colors.teal, size: 36),
           const SizedBox(height: 8),
-          Text(title,
-              style:
-              const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
           const SizedBox(height: 6),
-          Text(value, style: const TextStyle(fontSize: 15)),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 15),
+          ),
         ],
       ),
     );
   }
+
 
   Widget _buildStatusCard() {
     IconData icon;
